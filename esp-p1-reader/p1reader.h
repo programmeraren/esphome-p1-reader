@@ -1,9 +1,13 @@
 //-------------------------------------------------------------------------------------
 // ESPHome P1 Electricity Meter custom sensor
-// Copyright 2020 Pär Svanström
+// Copyright 2023 Hazze Molin
 // 
 // History
-//  0.1.0 2020-11-05:   Initial release
+//  0.1.0 2020-11-05:   Initial release (Pär Svanström)
+//  1.0.0 2022-12-01:   Forked Pär's release. (Hazze)
+//  1.1.0 2022-12-05:   Modifications for RTS, timeout and led receive data. (Hazze)
+//  1.5.0 2023-04-01:   Modifications for Vemos D1 Mini and improved led indicators. (Hazze)
+//  1.7.0 2023-06-28:   Hardware board rev 1.7 was finalized. Some code improvements. (Hazze)
 //
 // MIT License
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), 
@@ -20,7 +24,8 @@
 
 #include "esphome.h"
 
-#define BUF_SIZE 60
+#define BUF_SIZE 64
+#define READ_CHARS_MAX  30
 
 class ParsedMessage {
   public:
@@ -68,7 +73,7 @@ class ParsedMessage {
 class P1Reader : public Component, public UARTDevice {
   const char* DELIMITERS = "()*:";
   const char* DATA_ID = "1-0";
-  char buffer[BUF_SIZE];
+  char readBuffer[BUF_SIZE+1];
 
   public:
     Sensor *cumulativeActiveImport = new Sensor();
@@ -111,17 +116,101 @@ class P1Reader : public Component, public UARTDevice {
 
     P1Reader(UARTComponent *parent) : UARTDevice(parent) {}
 
-    void setup() override { }
+    // Pins defined for Vemos D1 Mini.
+    #define LED_ONBOARD_PIN 2 // GPIO2 D4
+    #define LED_STATUS_PIN 12 // GPIO12 D6
+    #define LED_RTS_PIN 15    // GPIO15 D8
+
+    // Delay settings
+    #define ONBOARD_FLASH_DELAY 750
+    #define STATUS_FLASH_DELAY 950
+    #define RTS_DELAY 15000
+
+    boolean onboardFlash = false;
+    boolean statusFlash = false;
+    unsigned long lastOnboardFlashTime = 0l;
+    unsigned long lastStatusFlashTime = 0l;
+    unsigned long lastRtsTime = 0l;
+
+    void setup() override {
+      ESP_LOGI("exe", " >> SETUP...");
+      digitalWrite(LED_RTS_PIN, LOW);
+      pinMode(LED_RTS_PIN, OUTPUT);
+
+      digitalWrite(LED_STATUS_PIN, LOW);
+      pinMode(LED_STATUS_PIN, OUTPUT);
+
+      digitalWrite(LED_ONBOARD_PIN, LOW);
+      pinMode(LED_ONBOARD_PIN, OUTPUT);
+
+      lastOnboardFlashTime = millis();
+      lastStatusFlashTime = millis();
+      lastRtsTime = millis();
+    }
 
     void loop() override {
       readP1Message();
+      onboardLedFlashWithDelay();
+      statusLedFlashWithDelay();
+      checkTimeToTurnOnRts();
     }
 
   private:
+
+    void statusLedFlashWithDelay() {
+      if (millis() - lastStatusFlashTime > STATUS_FLASH_DELAY) {
+        statusLedToggle();
+      }
+    }
+
+    void statusLedToggle() {
+        statusFlash = !statusFlash;
+        statusLedOutput();
+    }
+
+    void statusLedTurnOn() {
+        statusFlash = true;
+        statusLedOutput();
+    }
+
+    void statusLedTurnOff() {
+        statusFlash = false;
+        statusLedOutput();
+    }
+
+    void statusLedOutput() {
+        digitalWrite(LED_STATUS_PIN, statusFlash ? HIGH : LOW);
+        lastStatusFlashTime = millis();
+    }
+
+    void onboardLedFlashWithDelay() {
+      if (millis() - lastOnboardFlashTime > ONBOARD_FLASH_DELAY) {
+        onboardFlash = !onboardFlash;
+        digitalWrite(LED_ONBOARD_PIN, onboardFlash ? HIGH : LOW);
+        lastOnboardFlashTime = millis();
+      }
+    }
+
+    void checkTimeToTurnOnRts() {
+      if (millis() - lastRtsTime > RTS_DELAY) {
+        turnOnRts();
+        // ESP_LOGI("exe", " > Turned On RTS.");
+      }
+    }
+
+    void turnOnRts() {
+      lastRtsTime = millis();
+      digitalWrite(LED_RTS_PIN, HIGH);
+    }
+
+    void turnOffRts() {
+      digitalWrite(LED_RTS_PIN, LOW);
+    }
+
     uint16_t crc16_update(uint16_t crc, uint8_t a) {
       int i;
       crc ^= a;
-      for (i = 0; i < 8; ++i) {
+      for (i = 0; i < 8; i++) {
         if (crc & 1) {
             crc = (crc >> 1) ^ 0xA001;
         } else {
@@ -252,62 +341,123 @@ class P1Reader : public Component, public UARTDevice {
       currentL3->publish_state(parsed->currentL3);
     }
 
+    // Non-blocking readline!
+    int readBufferedLineNonBlocking(char *buffer, int bufferSizeMax)
+    {
+      static int readlinePos = 0;
+      int returnPos;
+      int chRead = read();
+
+      if (chRead > 0) {
+        switch (chRead) {
+          case '\n':
+            returnPos = readlinePos;
+            readlinePos = 0;  // Reset position index ready for next time.
+            return returnPos;
+          case '\r':
+            // Ignore CR, so return -1.
+            return -1;
+          default:
+            if (readlinePos < bufferSizeMax) {
+              buffer[readlinePos++] = chRead;
+              buffer[readlinePos] = 0x00; // Add NULL end of string.
+            }
+            // Not end of line, so return -1.
+            return -1;
+        }
+      }
+
+      // Not end of line, so return -1.
+      return -1;
+    }
+
     void readP1Message() {
+      static bool telegramEnded = true;
+      static ParsedMessage parsed = ParsedMessage();
+      static uint16_t crc = 0x0000;
+      static int linesRead = 0;
+      static int lineLength = -1;
+      static int charsCounter = 0;
+
       if (available()) {
-        uint16_t crc = 0x0000;
-        ParsedMessage parsed = ParsedMessage();
-        bool telegramEnded = false;
+        if (telegramEnded) {
+          parsed = ParsedMessage();
+          telegramEnded = false;
+          crc = 0x0000;
+          linesRead = 0;
+          lineLength = -1;
 
-        while (available()) {
-          int len = Serial.readBytesUntil('\n', buffer, BUF_SIZE);
+          ESP_LOGD("exe", " > Receiving Telegram ...");
 
-          if (len > 0) {
-          	ESP_LOGD("data", "%s", buffer);
-
-            // put newline back as it is required for CRC calculation
-            buffer[len] = '\n';
-            buffer[len + 1] = '\0';
-
-            // if we've reached the CRC checksum, calculate last CRC and compare
-            if (buffer[0] == '!') {
-              crc = crc16_update(crc, buffer[0]);
-              int crcFromMsg = (int) strtol(&buffer[1], NULL, 16);
-              parsed.crcOk = crc == crcFromMsg;
-              ESP_LOGI("crc", "Telegram read. CRC: %04X = %04X. PASS = %s", crc, crcFromMsg, parsed.crcOk ? "YES": "NO");
-              telegramEnded = true;
-
-            // otherwise pass the row through the CRC calculation
-            } else {
-              for (int i = 0; i < len + 1; i++) {
-                crc = crc16_update(crc, buffer[i]);
-              }
-            }
-
-            // if this is a row containing information
-            if (strchr(buffer, '(') != NULL) {
-              char* dataId = strtok(buffer, DELIMITERS);
-              char* obisCode = strtok(NULL, DELIMITERS);
-
-              // ...and this row is a data row, then parse row
-              if (strncmp(DATA_ID, dataId, strlen(DATA_ID)) == 0) {
-                char* value = strtok(NULL, DELIMITERS);
-                char* unit = strtok(NULL, DELIMITERS);
-                parseRow(&parsed, obisCode, value);
-              }
-            }
-          }
-          // clean buffer
-          memset(buffer, 0, BUF_SIZE - 1);
-        
-          if (!telegramEnded && !available()) {
-          	// wait for more data
-          	delay(40);
-          }
+          // Turn off RTS when starting to receive data!
+          turnOffRts();
         }
 
-        // if the CRC pass, publish sensor values
-        if (parsed.crcOk) {
-          publishSensors(&parsed);
+        charsCounter = 0;
+        while (lineLength < 0 && charsCounter < READ_CHARS_MAX) {
+          lineLength = readBufferedLineNonBlocking(readBuffer, BUF_SIZE);
+          charsCounter++;
+        }
+
+        if (lineLength >= 0) {
+          ESP_LOGD("data", " > Read line: \"%s\"  length: %d", readBuffer, lineLength);
+          linesRead++;
+
+          if (lineLength > 0) {
+            // If we've reached the CRC checksum, calculate and read the final CRC and compare.
+            if (readBuffer[0] == '!') {
+              crc = crc16_update(crc, readBuffer[0]); // Include the ! in checksum.
+
+              int crcFromMsg = (int) strtol(&readBuffer[1], NULL, 16);
+              parsed.crcOk = (crc == crcFromMsg);
+
+              ESP_LOGI("crc", " > Read Telegram %d lines. CRC: %04X = %04X : %s.",
+                linesRead, crc, crcFromMsg, parsed.crcOk ? "PASS": "FAIL");
+
+              // If the CRC pass, publish the sensor values.
+              if (parsed.crcOk) {
+                publishSensors(&parsed);
+                statusLedTurnOn();
+              } else {
+                statusLedTurnOff();
+              }
+
+              telegramEnded = true;
+            } else {
+              // Pass the row through the CRC calculation.
+              for (int i = 0; i < lineLength; i++) {
+                crc = crc16_update(crc, readBuffer[i]);
+              }
+
+              // Check if this is a row containing information.
+              if (strchr(readBuffer, '(') != NULL) {
+                char* dataId = strtok(readBuffer, DELIMITERS);
+                char* obisCode = strtok(NULL, DELIMITERS);
+
+                // ...and this row is a data row, then parse the row.
+                if (strncmp(DATA_ID, dataId, strlen(DATA_ID)) == 0) {
+                  char* value = strtok(NULL, DELIMITERS);
+                  char* unit = strtok(NULL, DELIMITERS);
+                  parseRow(&parsed, obisCode, value);
+
+                  statusLedToggle();
+                }
+              }
+            }
+          }
+
+          // Remember to include carrige return and newline as it is required for the CRC calculation.
+          crc = crc16_update(crc, '\r');
+          crc = crc16_update(crc, '\n');
+
+          // Reset buffer
+          readBuffer[0] = 0x00;
+          lineLength = -1;
+        }
+
+        if (!telegramEnded && !available()) {
+          // Wait for more data...
+          delay(5);
         }
       }
     }
