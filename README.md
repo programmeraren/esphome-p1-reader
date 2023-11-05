@@ -31,39 +31,40 @@ This board fits well into the compartment of the T211 meter so there is no need 
 * Optional connectors for future functionality (not implemented).
 
 ## Example of data read
-This is an example of the actual data sent from the meter to the Wemos D1 Mini.
+This is an example of the actual data read from the meter by the Wemos D1 Mini.
 ```
-[13:37:01][D][data:264]: /ELL5\nnnnnnnnn_A
-[13:37:01][D][data:264]:
-[13:37:01][D][data:264]: 0-0:1.0.0(210217184019W)
-[13:37:01][D][data:264]: 1-0:1.8.0(00006678.394*kWh)
-[13:37:01][D][data:264]: 1-0:2.8.0(00000000.000*kWh)
-[13:37:01][D][data:264]: 1-0:3.8.0(00000021.988*kvarh)
-[13:37:01][D][data:264]: 1-0:4.8.0(00001020.971*kvarh)
-[13:37:01][D][data:264]: 1-0:1.7.0(0001.727*kW)
-[13:37:01][D][data:264]: 1-0:2.7.0(0000.000*kW)
-[13:37:01][D][data:264]: 1-0:3.7.0(0000.000*kvar)
-[13:37:01][D][data:264]: 1-0:4.7.0(0000.309*kvar)
-[13:37:01][D][data:264]: 1-0:21.7.0(0001.023*kW)
-[13:37:01][D][data:264]: 1-0:41.7.0(0000.350*kW)
-[13:37:01][D][data:264]: 1-0:61.7.0(0000.353*kW)
-[13:37:01][D][data:264]: 1-0:22.7.0(0000.000*kW)
-[13:37:01][D][data:264]: 1-0:42.7.0(0000.000*kW)
-[13:37:01][D][data:264]: 1-0:62.7.0(0000.000*kW)
-[13:37:01][D][data:264]: 1-0:23.7.0(0000.000*kvar)
-[13:37:01][D][data:264]: 1-0:43.7.0(0000.000*kvar)
-[13:37:01][D][data:264]: 1-0:63.7.0(0000.000*kvar)
-[13:37:01][D][data:264]: 1-0:24.7.0(0000.009*kvar)
-[13:37:01][D][data:264]: 1-0:44.7.0(0000.161*kvar)
-[13:37:01][D][data:264]: 1-0:64.7.0(0000.138*kvar)
-[13:37:01][D][data:264]: 1-0:32.7.0(240.3*V)
-[13:37:01][D][data:264]: 1-0:52.7.0(240.1*V)
-[13:37:01][D][data:264]: 1-0:72.7.0(241.3*V)
-[13:37:01][D][data:264]: 1-0:31.7.0(004.2*A)
-[13:37:01][D][data:264]: 1-0:51.7.0(001.6*A)
-[13:37:01][D][data:264]: 1-0:71.7.0(001.7*A)
-[13:37:01][D][data:264]: !7945
-[13:37:01][I][crc:444]: > Read Telegram 30 lines. CRC: 7945 = 7945 : PASS.
+[13:37:00][D][exe:390]: > Receiving Telegram ... 
+[13:37:00][D][data:403]: > Read line: "/ELL5\nnnnnnnnn_A" length: 17 
+[13:37:00][D][data:403]: > Read line: "" length: 0 
+[13:37:00][D][data:403]: > Read line: "0-0:1.0.0(000220124115W)" length: 24 
+[13:37:00][D][data:403]: > Read line: "1-0:1.8.0(00007874.250*kWh)" length: 27 
+[13:37:00][D][data:403]: > Read line: "1-0:2.8.0(00000000.004*kWh)" length: 27 
+[13:37:00][D][data:403]: > Read line: "1-0:3.8.0(00000001.910*kvarh)" length: 29 
+[13:37:00][D][data:403]: > Read line: "1-0:4.8.0(00008806.040*kvarh)" length: 29 
+[13:37:00][D][data:403]: > Read line: "1-0:1.7.0(0001.992*kW)" length: 22 
+[13:37:00][D][data:403]: > Read line: "1-0:2.7.0(0000.000*kW)" length: 22 
+[13:37:00][D][data:403]: > Read line: "1-0:3.7.0(0000.000*kvar)" length: 24 
+[13:37:00][D][data:403]: > Read line: "1-0:4.7.0(0002.025*kvar)" length: 24 
+[13:37:00][D][data:403]: > Read line: "1-0:21.7.0(0000.682*kW)" length: 23 
+[13:37:00][D][data:403]: > Read line: "1-0:41.7.0(0000.740*kW)" length: 23 
+[13:37:00][D][data:403]: > Read line: "1-0:61.7.0(0000.568*kW)" length: 23 
+[13:37:00][D][data:403]: > Read line: "1-0:22.7.0(0000.000*kW)" length: 23 
+[13:37:00][D][data:403]: > Read line: "1-0:42.7.0(0000.000*kW)" length: 23 
+[13:37:00][D][data:403]: > Read line: "1-0:62.7.0(0000.000*kW)" length: 23 
+[13:37:00][D][data:403]: > Read line: "1-0:23.7.0(0000.000*kvar)" length: 25 
+[13:37:00][D][data:403]: > Read line: "1-0:43.7.0(0000.000*kvar)" length: 25 
+[13:37:00][D][data:403]: > Read line: "1-0:63.7.0(0000.000*kvar)" length: 25 
+[13:37:00][D][data:403]: > Read line: "1-0:24.7.0(0000.644*kvar)" length: 25 
+[13:37:00][D][data:403]: > Read line: "1-0:44.7.0(0000.694*kvar)" length: 25 
+[13:37:00][D][data:403]: > Read line: "1-0:64.7.0(0000.686*kvar)" length: 25 
+[13:37:00][D][data:403]: > Read line: "1-0:32.7.0(229.6*V)" length: 19 
+[13:37:00][D][data:403]: > Read line: "1-0:52.7.0(229.6*V)" length: 19 
+[13:37:00][D][data:403]: > Read line: "1-0:72.7.0(231.7*V)" length: 19 
+[13:37:00][D][data:403]: > Read line: "1-0:31.7.0(004.1*A)" length: 19 
+[13:37:01][D][data:403]: > Read line: "1-0:51.7.0(004.5*A)" length: 19 
+[13:37:01][D][data:403]: > Read line: "1-0:71.7.0(003.8*A)" length: 19 
+[13:37:01][D][data:403]: > Read line: "!413C" length: 5 
+[13:37:01][I][crc:414]: > Read Telegram 30 lines. CRC: 413C = 413C : PASS.
 ```
 
 The last row contains the CRC check. If you constantly get invalid CRC there might be something wrong with the serial communication.
@@ -75,20 +76,20 @@ The current version in main is tested with ESPHome version `2023.6.4`. Make sure
 * [Sagemcom T211](https://www.ellevio.se/globalassets/content/el/elmatare-produktblad-b2c/ellevio_produktblad_fas3_t211_web2_.pdf) / Ellevio & Skånska Energi ([Info, port activation, etc.](https://www.ellevio.se/privat/om-din-el/elen-i-hemmet/forsta-din-elmatare/))
 
 ## Hardware
-I have used a Wemos D1 Mini for my circuit and powers directly from the P1 port. See the [P1-port Reader rev 1.7 schematics](docs/P1-port+Reader+rev+1.7+-+schematics.pdf) (pdf).
+I have used a Wemos D1 Mini for my circuit and powers directly from the P1 port. See the [P1-port Reader rev 1.7 schematics](docs/P1-port%20Reader%20rev%201.7%20-%20schematics.pdf) (pdf).
 
 ### Parts used for this project
 - 1 pcs P1 Port Reader board rev 1.7 (custom design by Hazze Molin)
 - 1 pcs Wemos D1 Mini board
 - 1 pcs 47uF electrolytic capacitor
 - 3 pcs 3k3 0.1W 0603 resistors
-- 2 pcs 10k 0.1W 0603 resistors
 - 1 pcs 1k 0.1W 0603 resistor
 - 3 pcs 5mm LEDs (red, green and yellow or any colour combination you like)
 - 3 pcs 330ohm 0.25W 0805 resistors (adjust resistances depending on actual LEDs used)
 - 2 pcs BC817-16 SOT-23 transistors
 - 1 pcs RJ12 connector
 - 1 pcs short cable with 6 wires
+- 2 pcs (optional) 10k 0.1W 0603 resistors (for I2C communication)
 - 7 pcs (optional) 100ohm 0.1W resistors (for misc hardware connections)
 
 ## Alternative PCB:s and enclosures
